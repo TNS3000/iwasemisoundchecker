@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>iwasemi | Sound Environment Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080808;
+  --bg2: #0f0f0f;
+  --surface: #141414;
+  --surface2: #1a1a1a;
+  --border: #252525;
+  --border2: #2f2f2f;
+  --text: #ede9e1;
+  --text-mid: #9a9490;
+  --text-muted: #5a5652;
+  --text-dim: #2e2c2a;
+  --gold: #c9ab7a;
+  --gold-soft: rgba(201,171,122,0.12);
+  --gold-glow: rgba(201,171,122,0.06);
+  --green: #5a9e72;
+  --yellow: #c9a84c;
+  --orange: #c97a3a;
+  --red: #b84b3a;
+  --blue: #4a7fb5;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Noto Sans JP',sans-serif;
+  font-weight:300;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+/* grain */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity:.5;
+}
+
+.app{
+  width:100%;max-width:430px;min-height:100vh;
+  display:flex;flex-direction:column;
+  position:relative;
+}
+
+/* ── Header ── */
+.hdr{
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:22px 24px 16px;
+  border-bottom:1px solid var(--border);
+}
+.logo{
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:18px;letter-spacing:.14em;color:var(--gold);
+}
+.logo-sub{
+  font-family:'Noto Sans JP',sans-serif;font-weight:300;
+  font-size:10px;letter-spacing:.12em;color:var(--text-muted);margin-left:8px;
+}
+.lang-btn{
+  background:none;border:1px solid var(--border);
+  color:var(--text-muted);font-family:'Noto Sans JP',sans-serif;
+  font-size:10px;letter-spacing:.1em;padding:5px 10px;cursor:pointer;
+  transition:all .2s;
+}
+.lang-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── Step indicator ── */
+.steps{
+  flex-shrink:0;
+  display:flex;align-items:center;
+  padding:14px 24px;gap:0;
+  border-bottom:1px solid var(--border);
+}
+.step-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
+  opacity:.3;transition:opacity .3s;
+}
+.step-item.active,.step-item.done{opacity:1;}
+.step-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--border2);border:1px solid var(--text-muted);
+  transition:all .3s;
+}
+.step-item.active .step-dot{background:var(--gold);border-color:var(--gold);}
+.step-item.done .step-dot{background:var(--green);border-color:var(--green);}
+.step-label{font-size:9px;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase;}
+.step-connector{width:24px;height:1px;background:var(--border);flex-shrink:0;margin-top:-16px;}
+
+/* ── Screens ── */
+.screens{flex:1;position:relative;min-height:0;}
+.screen{
+  display:none;
+  flex-direction:column;
+  padding:28px 24px 32px;
+  animation:slideIn .35s ease;
+  min-height:0;
+}
+.screen.active{display:flex;}
+@keyframes slideIn{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:translateX(0);}}
+
+/* ── Typography ── */
+.screen-title{
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:26px;line-height:1.2;color:var(--text);margin-bottom:6px;
+}
+.screen-title em{font-style:italic;color:var(--gold);}
+.screen-title-ja{
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:13px;color:var(--text-muted);line-height:1.8;margin-bottom:24px;
+}
+.section-label{
+  font-size:9px;letter-spacing:.2em;
+  color:var(--text-dim);text-transform:uppercase;margin-bottom:12px;
+}
+
+/* ── Space cards ── */
+.space-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:28px;}
+.space-card{
+  border:1px solid var(--border);background:var(--surface);
+  padding:16px 14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.space-card::before{
+  content:'';position:absolute;inset:0;
+  background:var(--gold-soft);opacity:0;transition:opacity .2s;
+}
+.space-card:hover::before,.space-card.sel::before{opacity:1;}
+.space-card.sel{border-color:var(--gold);}
+.space-icon{font-size:20px;margin-bottom:7px;}
+.space-name{font-size:11px;font-weight:500;color:var(--text);display:block;margin-bottom:1px;}
+.space-name-ja{font-family:'Noto Sans JP',sans-serif;font-size:9px;color:var(--text-muted);display:block;}
+
+/* ── Buttons ── */
+.btn-primary{
+  width:100%;padding:17px;background:var(--gold);color:var(--bg);
+  border:none;font-family:'Noto Sans JP',sans-serif;font-size:11px;
+  font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  cursor:pointer;transition:background .2s;flex-shrink:0;
+}
+.btn-primary:hover{background:#d9bf94;}
+.btn-primary:disabled{opacity:.3;cursor:not-allowed;}
+.btn-ghost{
+  width:100%;padding:13px;background:none;color:var(--text-muted);
+  border:1px solid var(--border);font-family:'Noto Sans JP',sans-serif;
+  font-size:10px;letter-spacing:.1em;cursor:pointer;transition:all .2s;
+  margin-top:8px;
+}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── Measure screen ── */
+.measure-center{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:28px;text-align:center;
+}
+.pulse-ring-wrap{width:180px;height:180px;position:relative;display:flex;align-items:center;justify-content:center;}
+.p-ring{
+  position:absolute;border-radius:50%;border:1px solid var(--gold);
+  animation:pring 2.2s ease-out infinite;
+}
+.p-ring:nth-child(1){width:70px;height:70px;animation-delay:0s;}
+.p-ring:nth-child(2){width:108px;height:108px;animation-delay:.45s;opacity:.6;}
+.p-ring:nth-child(3){width:146px;height:146px;animation-delay:.9s;opacity:.3;}
+.p-ring:nth-child(4){width:180px;height:180px;animation-delay:1.35s;opacity:.15;}
+@keyframes pring{
+  0%{transform:scale(.8);opacity:0;}
+  30%{opacity:1;}
+  100%{transform:scale(1.05);opacity:0;}
+}
+.pulse-core{
+  width:52px;height:52px;border-radius:50%;
+  background:var(--gold);display:flex;align-items:center;justify-content:center;z-index:1;
+}
+.db-live{
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:52px;color:var(--text);line-height:1;
+}
+.db-unit{font-size:14px;color:var(--text-muted);font-family:'Noto Sans JP',sans-serif;}
+.bars-wrap{display:flex;align-items:flex-end;gap:3px;height:40px;margin-top:4px;}
+.bar{width:4px;background:var(--gold);border-radius:2px;height:4px;opacity:.65;transition:height .08s;}
+.prog-track{width:100%;height:1px;background:var(--border2);overflow:hidden;}
+.prog-fill{height:100%;background:var(--gold);width:0%;transition:width .1s linear;}
+.measure-note{font-size:11px;color:var(--text-muted);line-height:1.8;}
+
+/* ── RT60 screen ── */
+.rt-intro{font-size:12px;color:var(--text-muted);line-height:1.8;margin-bottom:24px;}
+.rt-method-row{display:flex;gap:8px;margin-bottom:24px;}
+.method-card{
+  flex:1;border:1px solid var(--border);background:var(--surface);
+  padding:16px 12px;cursor:pointer;transition:all .2s;text-align:center;
+}
+.method-card.sel{border-color:var(--gold);background:var(--gold-glow);}
+.method-icon{font-size:24px;margin-bottom:8px;}
+.method-name{font-size:11px;font-weight:500;color:var(--text);}
+.method-name-ja{font-family:'Noto Sans JP',sans-serif;font-size:9px;color:var(--text-muted);margin-top:2px;}
+
+/* RT60 measuring states */
+.rt-state{display:none;flex-direction:column;align-items:center;gap:20px;text-align:center;}
+.rt-state.show{display:flex;}
+.burst-btn{
+  width:120px;height:120px;border-radius:50%;
+  background:none;border:2px solid var(--gold);color:var(--gold);
+  font-size:36px;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.burst-btn:active{background:var(--gold-soft);transform:scale(.94);}
+.rt-big{font-family:'Noto Sans JP',sans-serif;font-size:56px;color:var(--gold);line-height:1;}
+.rt-label{font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;}
+.countdown{font-family:'Noto Sans JP',sans-serif;font-size:80px;color:var(--text);line-height:1;}
+
+.decay-canvas{width:100%;height:80px;background:var(--surface);border:1px solid var(--border);}
+.rt-note{font-size:11px;color:var(--text-muted);line-height:1.7;}
+
+/* ── Result screen ── */
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.metric-card{
+  border:1px solid var(--border);background:var(--surface);
+  padding:18px 16px;position:relative;overflow:hidden;
+}
+.metric-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--m-color,var(--gold));opacity:.6;
+}
+.metric-value{
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:38px;line-height:1;color:var(--m-color,var(--gold));margin-bottom:2px;
+}
+.metric-unit{font-size:11px;color:var(--text-muted);}
+.metric-name{font-size:9px;letter-spacing:.12em;color:var(--text-muted);text-transform:uppercase;margin-top:8px;}
+.metric-bar-track{width:100%;height:2px;background:var(--border2);margin-top:8px;}
+.metric-bar-fill{height:100%;background:var(--m-color,var(--gold));transition:width 1s cubic-bezier(.25,1,.5,1);}
+
+.score-banner{
+  border:1px solid var(--border);background:var(--surface);
+  padding:20px;margin-bottom:20px;position:relative;overflow:hidden;
+}
+.score-banner::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.score-row{display:flex;align-items:flex-end;gap:10px;margin-bottom:8px;}
+.score-num{
+  font-family:'Noto Sans JP',sans-serif;font-size:64px;line-height:1;
+  color:var(--score-col,var(--gold));transition:color .5s;
+}
+.score-denom{font-size:18px;color:var(--text-muted);margin-bottom:10px;}
+.score-bar-t{width:100%;height:2px;background:var(--border2);margin-bottom:16px;}
+.score-bar-f{height:100%;background:var(--score-col,var(--gold));transition:width 1.2s cubic-bezier(.25,1,.5,1);}
+.verdict{font-family:'Noto Sans JP',sans-serif;font-size:20px;line-height:1.35;color:var(--text);margin-bottom:4px;}
+.verdict-ja{font-family:'Noto Sans JP',sans-serif;font-size:12px;color:var(--text-muted);line-height:1.9;}
+
+.evidence-card{
+  border-left:2px solid var(--gold);padding:12px 14px;
+  background:var(--surface);margin-bottom:20px;
+}
+.evidence-text{font-size:11px;color:var(--text-muted);line-height:1.8;}
+.evidence-src{font-size:9px;color:var(--text-dim);margin-top:5px;letter-spacing:.04em;}
+
+.tips-list{margin-bottom:20px;}
+.tip-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.tip-row:last-child{border:none;}
+.tip-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);margin-top:5px;flex-shrink:0;}
+.tip-text{font-size:11px;color:var(--text-muted);line-height:1.7;}
+
+.cta-block{
+  border:1px solid var(--border);background:var(--surface);
+  padding:22px;margin-bottom:12px;position:relative;overflow:hidden;
+}
+.cta-block::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.cta-brand{
+  font-family:'Noto Sans JP',sans-serif;font-size:16px;
+  letter-spacing:.1em;color:var(--gold);margin-bottom:6px;
+}
+.cta-desc{font-size:11px;color:var(--text-muted);line-height:1.7;margin-bottom:14px;}
+.btn-cta{
+  display:block;width:100%;padding:12px;background:none;
+  border:1px solid var(--gold);color:var(--gold);
+  font-family:'Noto Sans JP',sans-serif;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;cursor:pointer;text-align:center;
+  text-decoration:none;transition:all .2s;
+}
+.btn-cta:hover{background:var(--gold);color:var(--bg);}
+.restart-btn{
+  width:100%;padding:13px;background:none;border:none;
+  color:var(--text-dim);font-family:'Noto Sans JP',sans-serif;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  cursor:pointer;transition:color .2s;margin-bottom:20px;
+}
+.restart-btn:hover{color:var(--text-muted);}
+
+.err-box{
+  background:rgba(184,75,58,.1);border:1px solid rgba(184,75,58,.25);
+  padding:14px;font-size:11px;color:#e07060;line-height:1.7;margin-top:12px;
+}
+
+footer{
+  flex-shrink:0;
+  text-align:center;padding:12px;
+  font-size:9px;color:var(--text-dim);letter-spacing:.06em;
+  border-top:1px solid var(--border);
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div>
+      <span class="logo">iwasemi</span>
+      <span class="logo-sub">SOUND ANALYZER</span>
+    </div>
+    <button class="lang-btn" onclick="toggleLang()">EN / JP</button>
+  </div>
+
+  <!-- STEP INDICATOR -->
+  <div class="steps">
+    <div class="step-item active" id="si0">
+      <div class="step-dot"></div>
+      <div class="step-label" id="sl0">Space</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="si1">
+      <div class="step-dot"></div>
+      <div class="step-label" id="sl1">Noise</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="si2">
+      <div class="step-dot"></div>
+      <div class="step-label" id="sl2">RT60</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-item" id="si3">
+      <div class="step-dot"></div>
+      <div class="step-label" id="sl3">Report</div>
+    </div>
+  </div>
+
+  <div class="screens">
+
+    <!-- SCREEN 0: SPACE SELECT -->
+    <div class="screen active" id="sc0">
+      <div class="screen-title" id="t-s0-title">Know your<br><em>sound environment.</em></div>
+      <div class="screen-title-ja" id="t-s0-sub">空間を選択して、騒音と残響を簡易測定します。</div>
+      <div class="section-label" id="t-space-lbl">Select space type</div>
+      <div class="space-grid">
+        <div class="space-card" onclick="pickSpace(this,'office')">
+          <div class="space-icon">🏢</div>
+          <span class="space-name" id="sp-office">Office</span>
+          <span class="space-name-ja">オフィス</span>
+        </div>
+        <div class="space-card" onclick="pickSpace(this,'home')">
+          <div class="space-icon">🏠</div>
+          <span class="space-name" id="sp-home">Home</span>
+          <span class="space-name-ja">住宅・自宅</span>
+        </div>
+        <div class="space-card" onclick="pickSpace(this,'hospitality')">
+          <div class="space-icon">🍽️</div>
+          <span class="space-name" id="sp-hosp">Restaurant / Hotel</span>
+          <span class="space-name-ja">飲食・ホテル</span>
+        </div>
+        <div class="space-card" onclick="pickSpace(this,'facility')">
+          <div class="space-icon">🏥</div>
+          <span class="space-name" id="sp-faci">Facility</span>
+          <span class="space-name-ja">施設・医療・教育</span>
+        </div>
+      </div>
+      <button class="btn-primary" id="s0next" onclick="goTo(1)" disabled>START QUICK MEASUREMENT</button>
+    </div>
+
+    <!-- SCREEN 1: NOISE MEASURE -->
+    <div class="screen" id="sc1">
+      <div class="measure-center">
+        <div>
+          <div class="section-label" id="t-noise-step">Step 1 of 2 — Ambient Noise</div>
+          <div class="screen-title" style="font-size:22px" id="t-noise-title">Quick measurement:<br><em>noise level</em></div>
+        </div>
+        <div class="pulse-ring-wrap">
+          <div class="p-ring"></div><div class="p-ring"></div>
+          <div class="p-ring"></div><div class="p-ring"></div>
+          <div class="pulse-core">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#080808" stroke-width="2.5">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div class="db-live"><span id="dbLive">—</span><span class="db-unit"> dB</span></div>
+          <div class="bars-wrap" id="barsWrap"></div>
+        </div>
+        <div style="width:100%">
+          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+          <div class="measure-note" style="margin-top:14px" id="t-noise-note">Hold still. Measuring for 10 seconds.</div>
+        </div>
+        <div class="err-box" id="noiseErr" style="display:none">Microphone access required. Please allow and try again.</div>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: RT60 MEASURE -->
+    <div class="screen" id="sc2">
+      <div class="section-label" id="t-rt-step">Step 2 of 2 — Reverberation</div>
+      <div class="screen-title" style="font-size:22px;margin-bottom:6px" id="t-rt-title">Quick measurement:<br><em>reverberation</em></div>
+      <p class="rt-intro" id="t-rt-intro">RT60 measures how long sound takes to decay in your space.</p>
+
+      <!-- state: ready -->
+      <div class="rt-state show" id="rts-ready">
+        <div class="rt-note" id="t-rt-ready-note">Stand in the centre of the room.<br>Keep phone at chest height.</div>
+        <button class="btn-primary" onclick="startRT()">BEGIN RT60 MEASUREMENT</button>
+        <button class="btn-ghost" onclick="skipRT()" id="t-rt-skip">Skip reverberation →</button>
+      </div>
+
+      <!-- state: burst button (tap to trigger) -->
+      <div class="rt-state" id="rts-countdown">
+        <div class="rt-note" id="t-rt-ctd-note">音量を上げて、ボタンを押してください。<br>Volume up, then tap to play the burst tone.</div>
+        <button class="burst-btn" id="burstBtn" onclick="doBurst()" style="font-size:28px">🔊</button>
+        <div class="rt-note" style="font-size:10px;color:var(--text-muted)" id="t-rt-countdown-lbl">Tap to play · タップして再生</div>
+      </div>
+
+      <!-- state: listening -->
+      <div class="rt-state" id="rts-listening">
+        <div class="rt-label" id="t-rt-listening">Capturing decay</div>
+        <canvas class="decay-canvas" id="decayCanvas" width="380" height="80"></canvas>
+        <div class="rt-note" id="t-rt-listen-note">Stay still while we analyse the sound tail.</div>
+      </div>
+
+      <!-- state: done -->
+      <div class="rt-state" id="rts-done">
+        <div class="rt-label" id="t-rt-result-lbl">Reverberation time</div>
+        <div class="rt-big"><span id="rtResult">—</span><span style="font-size:20px;color:var(--text-muted)"> s</span></div>
+        <div class="rt-note" id="t-rt-done-note">RT60 measurement complete.</div>
+        <button class="btn-primary" onclick="goTo(3)" id="t-rt-see-report">SEE FULL REPORT</button>
+        <button class="btn-ghost" onclick="retryRT()" id="t-rt-retry">Measure again</button>
+      </div>
+
+      <div class="err-box" id="rtErr" style="display:none">Microphone access required.</div>
+    </div>
+
+    <!-- SCREEN 3: REPORT -->
+    <div class="screen" id="sc3">
+      <!-- metrics row -->
+      <div class="result-grid">
+        <div class="metric-card" id="mc-noise" style="--m-color:var(--green)">
+          <div class="metric-value" id="r-noise-val">—</div>
+          <div class="metric-unit">dB</div>
+          <div class="metric-name" id="t-r-noise-name">Ambient Noise</div>
+          <div class="metric-bar-track"><div class="metric-bar-fill" id="r-noise-bar" style="width:0%"></div></div>
+        </div>
+        <div class="metric-card" id="mc-rt" style="--m-color:var(--blue)">
+          <div class="metric-value" id="r-rt-val">—</div>
+          <div class="metric-unit" id="r-rt-unit">s RT60</div>
+          <div class="metric-name" id="t-r-rt-name">Reverberation</div>
+          <div class="metric-bar-track"><div class="metric-bar-fill" id="r-rt-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- overall score -->
+      <div class="score-banner">
+        <div class="section-label" id="t-r-score-lbl">Overall Sound Environment Score</div>
+        <div class="score-row">
+          <div class="score-num" id="r-score">0</div>
+          <div class="score-denom">/100</div>
+        </div>
+        <div class="score-bar-t"><div class="score-bar-f" id="r-score-bar" style="width:0%"></div></div>
+        <div class="verdict" id="r-verdict"></div>
+        <div class="verdict-ja" id="r-verdict-ja"></div>
+      </div>
+
+      <!-- evidence -->
+      <div class="evidence-card">
+        <div class="evidence-text" id="r-evidence"></div>
+        <div class="evidence-src" id="r-evidence-src"></div>
+      </div>
+
+      <!-- tips -->
+      <div class="section-label" id="t-r-tips-lbl">Improvement Hints</div>
+      <div class="tips-list" id="r-tips"></div>
+
+      <!-- CTA -->
+      <div class="cta-block">
+        <div class="cta-brand">iwasemi™ OC-β</div>
+        <div class="cta-desc" id="t-cta-desc">An acoustic metamaterial panel that controls both noise and reverberation. See how iwasemi can transform your space.</div>
+        <a class="btn-cta" href="https://iwasemi.com/" target="_blank" id="t-cta-btn">LEARN MORE ABOUT IWASEMI</a>
+      </div>
+
+      <button class="restart-btn" onclick="restart()" id="t-restart">↩ MEASURE AGAIN</button>
+    </div>
+
+  </div><!-- /screens -->
+
+  <footer>© Pixie Dust Technologies, Inc. · iwasemi</footer>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let lang = 'en';
+let space = null;
+let measuredDb = null;
+let measuredRt = null;
+let audioCtx, analyser, src, stream;
+const dbSamples = [];
+
+// ════════════════════════════════════════
+// LANGUAGE
+// ════════════════════════════════════════
+const T = {
+  en:{
+    s0title:'Know your<br><em>sound environment.</em>',
+    s0sub:'Select a space for a quick measurement of noise and reverberation.',
+    spaceLbl:'Select space type',
+    spaces:{office:'Office',home:'Home',hospitality:'Restaurant / Hotel',facility:'Facility'},
+    s0next:'START QUICK MEASUREMENT',
+    steps:['Space','Noise','RT60','Report'],
+    noiseStep:'Step 1 of 2 — Ambient Noise',
+    noiseTitle:'Quick measurement:<br><em>noise level</em>',
+    noiseNote:'Hold still. Quick 10-second measurement.',
+    rtStep:'Step 2 of 2 — Reverberation',
+    rtTitle:'Quick measurement:<br><em>reverberation</em>',
+    rtIntro:'RT60 measures how long sound takes to decay in your space. Choose your sound source:',
+    rtReadyNote:'Stand in the centre of the room.<br>Keep phone at chest height.',
+    rtBegin:'BEGIN RT60 MEASUREMENT',
+    rtSkip:'Skip reverberation →',
+    rtCountdownLbl:'Playing burst in',
+    rtCtdNote:'Keep phone still and volume up.',
+    rtListening:'Capturing decay',
+    rtListenNote:'Stay still while we analyse the sound tail.',
+    rtResultLbl:'Reverberation time',
+    rtDoneNote:'RT60 measurement complete.',
+    rtSeeReport:'SEE FULL REPORT',
+    rtRetry:'Measure again',
+    rNoiseName:'Ambient Noise',rRtName:'Reverberation',
+    scoreLbl:'Overall Sound Environment Score',
+    tipslbl:'Improvement Hints',
+    ctaDesc:'An acoustic metamaterial panel that controls both noise and reverberation. See how iwasemi can transform your space.',
+    ctaBtn:'LEARN MORE ABOUT IWASEMI',
+    restart:'↩ MEASURE AGAIN',
+    rtSkipped:'Not measured',
+  },
+  ja:{
+    s0title:'空間の<em>音環境</em>を、知る。',
+    s0sub:'空間を選択して、騒音と残響を簡易測定します。',
+    spaceLbl:'空間タイプを選択',
+    spaces:{office:'オフィス',home:'住宅・自宅',hospitality:'飲食・ホテル',facility:'施設・医療・教育'},
+    s0next:'簡易測定を開始する',
+    steps:['空間','騒音','残響','レポート'],
+    noiseStep:'ステップ 1/2 — 環境騒音',
+    noiseTitle:'簡易測定：<br><em>騒音レベル</em>',
+    noiseNote:'10秒間、静止してください。',
+    rtStep:'ステップ 2/2 — 残響',
+    rtTitle:'簡易測定：<br><em>残響時間</em>',
+    rtIntro:'RT60は音が空間内で減衰するまでの時間です。音源を選んでください：',
+    rtReadyNote:'部屋の中央に立ち、<br>スマホを胸の高さで持ってください。',
+    rtBegin:'RT60 簡易測定を開始する',
+    rtSkip:'残響測定をスキップ →',
+    rtCountdownLbl:'バースト音を再生します',
+    rtCtdNote:'音量を上げて、スマホを静止してください。',
+    rtListening:'減衰を収録中',
+    rtListenNote:'音の余韻が収まるまで静止してください。',
+    rtResultLbl:'残響時間',
+    rtDoneNote:'RT60測定完了。',
+    rtSeeReport:'レポートを見る',
+    rtRetry:'もう一度測定する',
+    rNoiseName:'環境騒音',rRtName:'残響時間',
+    scoreLbl:'音環境総合スコア',
+    tipslbl:'改善のヒント',
+    ctaDesc:'騒音と残響の両方を制御する音響メタマテリアルパネル。iwasemiがあなたの空間を変えます。',
+    ctaBtn:'iwasemi について詳しく見る',
+    restart:'↩ もう一度測定する',
+    rtSkipped:'測定なし',
+  }
+};
+
+function toggleLang(){lang=lang==='en'?'ja':'en';applyLang();}
+function t(k){return T[lang][k]||T.en[k];}
+
+function applyLang(){
+  const L=T[lang];
+  document.getElementById('t-s0-title').innerHTML=L.s0title;
+  document.getElementById('t-s0-sub').textContent=L.s0sub;
+  document.getElementById('t-space-lbl').textContent=L.spaceLbl;
+  document.getElementById('s0next').textContent=L.s0next;
+  L.steps.forEach((s,i)=>document.getElementById('sl'+i).textContent=s);
+  document.getElementById('sp-office').textContent=L.spaces.office;
+  document.getElementById('sp-home').textContent=L.spaces.home;
+  document.getElementById('sp-hosp').textContent=L.spaces.hospitality;
+  document.getElementById('sp-faci').textContent=L.spaces.facility;
+  document.getElementById('t-noise-step').textContent=L.noiseStep;
+  document.getElementById('t-noise-title').innerHTML=L.noiseTitle;
+  document.getElementById('t-noise-note').textContent=L.noiseNote;
+  document.getElementById('t-rt-step').textContent=L.rtStep;
+  document.getElementById('t-rt-title').innerHTML=L.rtTitle;
+  document.getElementById('t-rt-intro').textContent=L.rtIntro;
+  document.getElementById('t-rt-ready-note').innerHTML=L.rtReadyNote;
+  document.getElementById('t-rt-skip').textContent=L.rtSkip;
+  document.getElementById('t-rt-countdown-lbl').textContent=L.rtCountdownLbl;
+  document.getElementById('t-rt-ctd-note').textContent=L.rtCtdNote;
+  document.getElementById('t-rt-listening').textContent=L.rtListening;
+  document.getElementById('t-rt-listen-note').textContent=L.rtListenNote;
+  document.getElementById('t-rt-result-lbl').textContent=L.rtResultLbl;
+  document.getElementById('t-rt-done-note').textContent=L.rtDoneNote;
+  document.getElementById('t-rt-see-report').textContent=L.rtSeeReport;
+  document.getElementById('t-rt-retry').textContent=L.rtRetry;
+  document.getElementById('t-r-noise-name').textContent=L.rNoiseName;
+  document.getElementById('t-r-rt-name').textContent=L.rRtName;
+  document.getElementById('t-r-score-lbl').textContent=L.scoreLbl;
+  document.getElementById('t-r-tips-lbl').textContent=L.tipslbl;
+  document.getElementById('t-cta-desc').textContent=L.ctaDesc;
+  document.getElementById('t-cta-btn').textContent=L.ctaBtn;
+  document.getElementById('t-restart').textContent=L.restart;
+  document.querySelector('.lang-btn').textContent=lang==='en'?'EN / JP':'JP / EN';
+  if(measuredDb!==null)renderReport();
+}
+
+// ════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════
+let currentScreen=0;
+
+function goTo(n){
+  document.getElementById('sc'+currentScreen).classList.remove('active');
+  document.getElementById('sc'+n).classList.add('active');
+  // step indicators
+  for(let i=0;i<4;i++){
+    const si=document.getElementById('si'+i);
+    si.classList.remove('active','done');
+    if(i<n)si.classList.add('done');
+    else if(i===n)si.classList.add('active');
+  }
+  currentScreen=n;
+  if(n===1)startNoise();
+  if(n===3)renderReport();
+}
+
+function pickSpace(el,s){
+  document.querySelectorAll('.space-card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  space=s;
+  document.getElementById('s0next').disabled=false;
+}
+
+
+// ════════════════════════════════════════
+// STEP 1: NOISE
+// ════════════════════════════════════════
+function buildBars(){
+  const w=document.getElementById('barsWrap');
+  w.innerHTML='';
+  for(let i=0;i<20;i++){const b=document.createElement('div');b.className='bar';w.appendChild(b);}
+}
+
+async function startNoise(){
+  buildBars();
+  dbSamples.length=0;
+  document.getElementById('noiseErr').style.display='none';
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('dbLive').textContent='—';
+
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=2048;
+    src=audioCtx.createMediaStreamSource(stream);
+    src.connect(analyser);
+
+    const buf=new Float32Array(analyser.frequencyBinCount);
+    const bars=document.querySelectorAll('#sc1 .bar');
+    const fill=document.getElementById('progFill');
+    const t0=Date.now();
+    const DUR=10000;
+
+    function tick(){
+      const el=Date.now()-t0;
+      fill.style.width=Math.min(el/DUR*100,100)+'%';
+      analyser.getFloatTimeDomainData(buf);
+      let rms=0;
+      for(let i=0;i<buf.length;i++)rms+=buf[i]*buf[i];
+      rms=Math.sqrt(rms/buf.length);
+      const db=rms>0?20*Math.log10(rms)+94:30;
+      const dbc=Math.max(20,Math.min(110,db));
+      dbSamples.push(dbc);
+      document.getElementById('dbLive').textContent=Math.round(dbc);
+      bars.forEach(b=>{b.style.height=Math.max(4,Math.random()*(dbc-28)*0.9)+'px';});
+      if(el<DUR)requestAnimationFrame(tick);
+      else finishNoise();
+    }
+    requestAnimationFrame(tick);
+  }catch(e){
+    document.getElementById('noiseErr').style.display='block';
+  }
+}
+
+function finishNoise(){
+  if(src)src.disconnect();
+  if(audioCtx)audioCtx.close();
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  measuredDb=Math.round(dbSamples.reduce((a,b)=>a+b,0)/dbSamples.length);
+  // auto advance to RT60
+  setTimeout(()=>goTo(2),600);
+}
+
+// ════════════════════════════════════════
+// STEP 2: RT60
+// ════════════════════════════════════════
+function showRtState(id){
+  ['rts-ready','rts-countdown','rts-listening','rts-done'].forEach(s=>{
+    document.getElementById(s).classList.toggle('show',s===id);
+  });
+}
+
+function startRT(){
+  document.getElementById('rtErr').style.display='none';
+  startBurstCountdown();
+}
+
+function skipRT(){
+  measuredRt=null;
+  goTo(3);
+}
+
+function retryRT(){
+  showRtState('rts-ready');
+}
+
+// --- BURST method ---
+function startBurstCountdown(){
+  // Show the tap button screen (AudioContext requires user gesture on mobile)
+  showRtState('rts-countdown');
+}
+
+async function doBurst(){
+  const btn=document.getElementById('burstBtn');
+  btn.style.opacity='.4';
+  btn.disabled=true;
+  try{
+    // Create and resume AudioContext from within user gesture
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    await ctx.resume();
+    // Wait a tick to ensure context is fully running
+    await new Promise(r=>setTimeout(r,100));
+    // Play burst tone: 3 seconds at 1000Hz
+    const BURST_SEC=3.0;
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.frequency.value=1000;
+    gain.gain.setValueAtTime(0,ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(1.0,ctx.currentTime+0.1);
+    gain.gain.setValueAtTime(1.0,ctx.currentTime+BURST_SEC-0.3);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+BURST_SEC);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+BURST_SEC);
+    // Wait for burst to finish before recording decay
+    await new Promise(r=>setTimeout(r,BURST_SEC*1000+200));
+    await recordDecay(ctx);
+  }catch(e){
+    console.error('Burst error:',e);
+    document.getElementById('rtErr').style.display='block';
+    btn.style.opacity='1';
+    btn.disabled=false;
+  }
+}
+
+// --- shared decay recorder ---
+async function recordDecay(existingCtx){
+  showRtState('rts-listening');
+  try{
+    const mStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const ctx=existingCtx||new(window.AudioContext||window.webkitAudioContext)();
+    const anal=ctx.createAnalyser();
+    anal.fftSize=2048;
+    const mSrc=ctx.createMediaStreamSource(mStream);
+    mSrc.connect(anal);
+
+    const RECORD_MS=3000;
+    const buf=new Float32Array(anal.frequencyBinCount);
+    const energyLog=[];
+    const t0=Date.now();
+
+    const canvas=document.getElementById('decayCanvas');
+    const cctx=canvas.getContext('2d');
+    cctx.clearRect(0,0,canvas.width,canvas.height);
+
+    await new Promise(resolve=>{
+      function tick(){
+        anal.getFloatTimeDomainData(buf);
+        let rms=0;
+        for(let i=0;i<buf.length;i++)rms+=buf[i]*buf[i];
+        rms=Math.sqrt(rms/buf.length);
+        const db=rms>1e-7?20*Math.log10(rms):(-90);
+        energyLog.push(db);
+        // draw waveform
+        const x=((Date.now()-t0)/RECORD_MS)*canvas.width;
+        const y=canvas.height/2+(db/90)*canvas.height/2;
+        cctx.fillStyle='rgba(201,171,122,0.7)';
+        cctx.fillRect(x,y,2,canvas.height-y);
+        if(Date.now()-t0<RECORD_MS)requestAnimationFrame(tick);
+        else resolve();
+      }
+      requestAnimationFrame(tick);
+    });
+
+    mSrc.disconnect();
+    mStream.getTracks().forEach(t=>t.stop());
+
+    // compute RT60 from decay curve
+    const rt=estimateRT60(energyLog);
+    measuredRt=rt;
+    document.getElementById('rtResult').textContent=rt!==null?rt.toFixed(2):'—';
+    showRtState('rts-done');
+  }catch(e){
+    document.getElementById('rtErr').style.display='block';
+    showRtState('rts-ready');
+  }
+}
+
+function estimateRT60(dbLog){
+  // Find peak, then measure slope of decay
+  if(!dbLog.length)return null;
+  const peak=Math.max(...dbLog);
+  const peakIdx=dbLog.indexOf(peak);
+  if(peakIdx<0||peakIdx>=dbLog.length-5)return null;
+
+  // Slice from peak onwards
+  const decay=dbLog.slice(peakIdx);
+  // Find -60dB point (or extrapolate from -20dB slope)
+  const target20=peak-20;
+  const target60=peak-60;
+
+  let idx20=-1,idx60=-1;
+  for(let i=0;i<decay.length;i++){
+    if(idx20<0&&decay[i]<=target20)idx20=i;
+    if(idx60<0&&decay[i]<=target60){idx60=i;break;}
+  }
+
+  const sampleRate=44100/2048; // approx frame rate
+  if(idx60>0){
+    return parseFloat((idx60/sampleRate).toFixed(2));
+  } else if(idx20>0){
+    // Extrapolate: RT20 * 3
+    const rt20=idx20/sampleRate;
+    return parseFloat((rt20*3).toFixed(2));
+  }
+  // fallback: use slope regression
+  if(decay.length>10){
+    const slope=(decay[decay.length-1]-decay[0])/decay.length;
+    if(slope<0){
+      const framesFor60=60/Math.abs(slope);
+      return parseFloat((framesFor60/sampleRate).toFixed(2));
+    }
+  }
+  return null;
+}
+
+// ════════════════════════════════════════
+// STEP 3: REPORT CONTENT
+// ════════════════════════════════════════
+const CONTENT={
+  office:{
+    noiseThresh:[
+      {max:40,score:90,col:'var(--green)',grade:'Excellent',gradeJa:'非常に良好',
+       v:'An exceptionally quiet workspace.',vJa:'集中に適した、静かな環境です。',
+       ev:'Research shows noise below 40dB enables sustained deep-focus work.',evJa:'40dB以下の環境は深い集中作業を持続させることが研究で示されています。',
+       src:'Cornell University Ergonomics Research, 2019',
+       tips:['Maintain quiet hours policy during focus blocks.','Soft furnishings help sustain this acoustic comfort.'],
+       tipsJa:['集中タイムブロックの静音ルールを維持しましょう。','布製家具が音環境の維持に効果的です。']},
+      {max:58,score:62,col:'var(--yellow)',grade:'Moderate',gradeJa:'やや課題あり',
+       v:'Ambient noise is quietly limiting your team\'s performance.',vJa:'会話音が集中力と作業効率を静かに蝕んでいます。',
+       ev:'Cornell study: office noise at 55dB reduces cognitive performance by up to 66%.',evJa:'コーネル大学：55dBの騒音環境で認知パフォーマンスが最大66%低下。',
+       src:'Cornell University, Evans & Johnson, 2000',
+       tips:['Install acoustic panels on hard parallel surfaces.','Create designated quiet zones for deep work.','Sound masking can reduce speech distraction.'],
+       tipsJa:['対向する硬い面に吸音パネルを設置しましょう。','集中作業用の静音ゾーンを設けましょう。','サウンドマスキングでスピーチの気散を低減できます。']},
+      {max:999,score:32,col:'var(--red)',grade:'Problematic',gradeJa:'要改善',
+       v:'This noise level is actively harming productivity and wellbeing.',vJa:'生産性と従業員の健康に悪影響を及ぼすレベルです。',
+       ev:'Prolonged exposure above 65dB correlates with elevated stress and reduced output.',evJa:'65dB超への長時間曝露はストレスホルモン上昇と生産性低下と相関します。',
+       src:'WHO Environmental Noise Guidelines, 2018',
+       tips:['Immediate acoustic treatment on reflective surfaces is needed.','Consider structural partitions in open-plan areas.','Measure RT60 to identify key reflection paths.'],
+       tipsJa:['反射面への吸音処置を早急に行いましょう。','オープンプランへの仕切り導入を検討してください。','RT60測定で主な反射経路を特定しましょう。']}
+    ],
+    rtIdeal:{min:0.3,max:0.6},
+    rtNote:{
+      good:'Reverberation is within the ideal range for office speech clarity.',goodJa:'残響時間はオフィスの会話明瞭度に適した範囲です。',
+      high:'High reverberation causes speech overlap, fatigue and reduced concentration.',highJa:'残響が長すぎると会話の重複、疲労、集中力低下を引き起こします。',
+      low:'Very low reverberation can feel sterile and increase awareness of ambient sounds.',lowJa:'残響が短すぎると無機質に感じられ、環境音が目立ちます。'
+    }
+  },
+  home:{
+    noiseThresh:[
+      {max:35,score:93,col:'var(--green)',grade:'Excellent',gradeJa:'理想的',
+       v:'A peaceful home environment.',vJa:'良質な睡眠と休息を支える、理想的な住環境です。',
+       ev:'WHO recommends indoor noise below 35dB for restorative sleep and recovery.',evJa:'WHOは良質な睡眠と回復のため室内騒音を35dB以下に推奨しています。',
+       src:'WHO Night Noise Guidelines, Europe',
+       tips:['Soft furnishings naturally maintain this acoustic comfort.','Rugs and curtains are excellent passive absorbers.'],
+       tipsJa:['ソファやカーペットが音環境を自然に維持します。','カーテンとラグは優れた受動的吸音材です。']},
+      {max:52,score:60,col:'var(--yellow)',grade:'Moderate',gradeJa:'やや騒がしい',
+       v:'Noise may be affecting sleep quality and family communication.',vJa:'会話のストレスや睡眠の質低下が起きやすい環境です。',
+       ev:'Background noise above 45dB increases vocal effort and causes fatigue over time.',evJa:'45dBを超える背景音は発声努力を増大させ、長期的に疲労をもたらします。',
+       src:'Acoustical Society of America',
+       tips:['Check for noise ingress from windows and exterior walls.','Soft furnishings in living areas reduce flutter echo.','Bedroom acoustic treatment improves sleep quality measurably.'],
+       tipsJa:['窓や外壁からの騒音侵入を確認しましょう。','リビングの布製家具がフラッターエコーを低減します。','寝室の吸音対策で睡眠の質を改善できます。']},
+      {max:999,score:28,col:'var(--red)',grade:'Noisy',gradeJa:'要改善',
+       v:'Noise at this level disrupts sleep, communication and relaxation.',vJa:'睡眠・会話・リラックスのすべてに影響する騒音レベルです。',
+       ev:'Chronic residential noise above 55dB is associated with cardiovascular risk per WHO.',evJa:'WHOのデータでは、55dB超の慢性的な住宅騒音は循環器疾患リスクと関連しています。',
+       src:'WHO Environmental Noise Guidelines, 2018',
+       tips:['Identify the primary noise source: external traffic or internal.','Heavy curtains and acoustic panels reduce reflection.','Sealing window and door gaps alone can reduce noise by 5–10dB.'],
+       tipsJa:['騒音の主な発生源（外部・内部）を特定しましょう。','厚手カーテンと吸音パネルで反響を低減できます。','窓や扉の隙間を塞ぐだけで5〜10dBの低減が可能です。']}
+    ],
+    rtIdeal:{min:0.2,max:0.5},
+    rtNote:{
+      good:'Reverberation is comfortable for home living and conversation.',goodJa:'会話と日常生活に適した残響レベルです。',
+      high:'Long reverberation makes conversation fatiguing and speech less clear.',highJa:'残響が長いと会話が疲れやすく、言葉が聞き取りにくくなります。',
+      low:'Very dry acoustics can feel uncomfortable for extended home occupation.',lowJa:'残響が短すぎると長い在宅時間では不快に感じられます。'
+    }
+  },
+  hospitality:{
+    noiseThresh:[
+      {max:50,score:90,col:'var(--green)',grade:'Excellent',gradeJa:'理想的',
+       v:'A refined acoustic atmosphere for your guests.',vJa:'ゲストがリラックスし、会話を楽しめる理想の音環境です。',
+       ev:'Acoustically comfortable spaces increase customer dwell time by up to 20%.',evJa:'音響的に快適な空間では顧客の滞在時間が最大20%長くなります。',
+       src:'PathIntelligence Retail Research, 2012',
+       tips:['Monitor acoustics as seasonal decor can shift the sound balance.','Upholstered seating sustains this comfortable atmosphere.'],
+       tipsJa:['季節の内装変更が音響バランスに影響することを監視しましょう。','クッションシートが快適な音環境を維持します。']},
+      {max:65,score:55,col:'var(--yellow)',grade:'Loud',gradeJa:'やや賑やか',
+       v:'Guests may be raising their voices to communicate.',vJa:'ゲストが会話のために声を張り上げている可能性があります。',
+       ev:'Above 65dB, the Lombard effect causes guests to raise voices, amplifying noise further.',evJa:'65dBを超えるとLombard効果でゲストが声を張り上げ、騒音がさらに増幅されます。',
+       src:'Journal of the Acoustical Society of America',
+       tips:['Ceiling treatment delivers the highest acoustic impact per area.','Upholstered seating absorbs speech effectively.','Acoustic panels behind seating reduce reflection paths.'],
+       tipsJa:['天井面への吸音処置が単位面積あたり最大の効果を持ちます。','クッションシートはスピーチ音を効果的に吸収します。','座席後方のパネルが反射経路を短縮します。']},
+      {max:999,score:26,col:'var(--red)',grade:'Too Loud',gradeJa:'要改善',
+       v:'Noise is impacting guest experience and brand perception.',vJa:'ゲスト体験・リピート率・口コミ評価に悪影響が出るレベルです。',
+       ev:'"Too loud" is the #2 most common restaurant complaint on review platforms.',evJa:'「うるさすぎる」はレストランへの不満の第2位であり、評価に直結します。',
+       src:'Yelp Noise Research, 2018',
+       tips:['Treat all hard parallel surfaces: walls, ceiling, floor.','Acoustic zoning creates quieter premium seating areas.','Material-first: swap hard surfaces for acoustic equivalents.'],
+       tipsJa:['壁・天井・床のすべての硬い対向面を処置しましょう。','音響ゾーニングで静かなプレミアム席を設けましょう。','硬い内装材をアコースティック対応素材に変えるアプローチが効果的です。']}
+    ],
+    rtIdeal:{min:0.5,max:1.0},
+    rtNote:{
+      good:'Reverberation is in the ideal range for a lively yet comfortable dining atmosphere.',goodJa:'活気ある食事空間に適した理想的な残響レベルです。',
+      high:'Excessive reverberation causes the restaurant to feel chaotic and tiring.',highJa:'残響が長すぎると空間が混乱した印象になり、ゲストが疲れやすくなります。',
+      low:'Very dry acoustics can feel sterile for a hospitality environment.',lowJa:'残響が短すぎるとホスピタリティ空間として無機質に感じられます。'
+    }
+  },
+  facility:{
+    noiseThresh:[
+      {max:40,score:91,col:'var(--green)',grade:'Excellent',gradeJa:'理想的',
+       v:'A therapeutic acoustic environment for users.',vJa:'利用者の安心感と集中力を支える、優れた音環境です。',
+       ev:'In healthcare, noise below 40dB is associated with faster patient recovery.',evJa:'医療環境での研究では40dB以下で患者の回復が早まることが示されています。',
+       src:'Journal of Advanced Nursing, 2015',
+       tips:['Continue monitoring to identify and address noise spikes.','Staff training on quiet hours reinforces acoustic discipline.'],
+       tipsJa:['騒音スパイクを特定するため継続的にモニタリングしましょう。','スタッフの静音意識向上トレーニングも効果的です。']},
+      {max:55,score:58,col:'var(--yellow)',grade:'Moderate',gradeJa:'やや課題あり',
+       v:'Noise may be affecting user comfort and staff concentration.',vJa:'利用者の集中・学習・療養に静かな影響を与えているレベルです。',
+       ev:'Background noise above 50dB reduces speech intelligibility in educational settings.',evJa:'教育環境では50dBを超える背景騒音がスピーチ明瞭度を低下させます。',
+       src:'ANSI S12.60 Acoustical Performance Criteria for Schools',
+       tips:['Ceiling absorption is most effective for reducing reverberation.','Soft furnishings in waiting areas help significantly.','Consider acoustic partitions for multi-use spaces.'],
+       tipsJa:['天井への吸音材設置が残響低減に最も効果的です。','待合エリアの布製内装も大きな効果があります。','多目的スペースへのアコースティック間仕切りを検討しましょう。']},
+      {max:999,score:28,col:'var(--red)',grade:'Problematic',gradeJa:'要改善',
+       v:'Noise at this level is a significant concern for user wellbeing.',vJa:'利用者・従業員の健康とサービス品質に直接影響するレベルです。',
+       ev:'WHO links chronic occupational noise above 65dB to burnout and increased error rates.',evJa:'WHOはデータで65dB超の職業騒音をバーンアウトとエラー率増加に関連付けています。',
+       src:'WHO Environmental Noise Guidelines, 2018',
+       tips:['Conduct a full acoustic audit with reverberation time measurement.','Prioritise treatment in highest-traffic and care areas first.','Noise reduction investment typically returns through reduced errors.'],
+       tipsJa:['残響時間測定を含む包括的な音響診断を実施しましょう。','最も人が集まるエリアから優先的に対策しましょう。','騒音低減投資はエラー率低下により回収されることが多いです。']}
+    ],
+    rtIdeal:{min:0.4,max:0.8},
+    rtNote:{
+      good:'Reverberation is within the appropriate range for this facility type.',goodJa:'この施設タイプに適した残響レベルです。',
+      high:'Excessive reverberation in facilities increases stress and miscommunication.',highJa:'施設内での過剰な残響はストレスとコミュニケーションミスを増加させます。',
+      low:'Very low reverberation may not cause concern in most facility types.',lowJa:'残響が短い場合は多くの施設タイプでは大きな問題ではありません。'
+    }
+  }
+};
+
+function getNoiseData(sp,db){
+  const thr=CONTENT[sp].noiseThresh;
+  for(const t of thr)if(db<=t.max)return t;
+  return thr[thr.length-1];
+}
+
+function getRtPenalty(sp,rt){
+  if(rt===null)return 0;
+  const ideal=CONTENT[sp].rtIdeal;
+  if(rt>=ideal.min&&rt<=ideal.max)return 0;
+  const diff=rt>ideal.max?rt-ideal.max:ideal.min-rt;
+  return Math.min(25,Math.round(diff/ideal.max*30));
+}
+
+function getRtNote(sp,rt){
+  if(rt===null)return null;
+  const ideal=CONTENT[sp].rtIdeal;
+  const rtN=CONTENT[sp].rtNote;
+  const isJa=lang==='ja';
+  if(rt>=ideal.min&&rt<=ideal.max)return isJa?rtN.goodJa:rtN.good;
+  if(rt>ideal.max)return isJa?rtN.highJa:rtN.high;
+  return isJa?rtN.lowJa:rtN.low;
+}
+
+function renderReport(){
+  const nd=getNoiseData(space,measuredDb);
+  const penalty=getRtPenalty(space,measuredRt);
+  const finalScore=Math.max(10,nd.score-penalty);
+  const isJa=lang==='ja';
+
+  // Noise metric
+  const noiseColor=nd.col;
+  document.getElementById('mc-noise').style.setProperty('--m-color',noiseColor);
+  document.getElementById('r-noise-val').textContent=measuredDb;
+  const noiseBarPct=Math.max(0,Math.min(100,100-(measuredDb-20)/90*100));
+  setTimeout(()=>{document.getElementById('r-noise-bar').style.width=noiseBarPct+'%';},100);
+
+  // RT metric
+  if(measuredRt!==null){
+    const ideal=CONTENT[space].rtIdeal;
+    const rtGood=measuredRt>=ideal.min&&measuredRt<=ideal.max;
+    const rtColor=rtGood?'var(--blue)':(measuredRt>ideal.max?'var(--orange)':'var(--blue)');
+    document.getElementById('mc-rt').style.setProperty('--m-color',rtColor);
+    document.getElementById('r-rt-val').textContent=measuredRt.toFixed(2);
+    document.getElementById('r-rt-unit').textContent='s RT60';
+    const rtBarPct=Math.max(0,Math.min(100,100-Math.abs(measuredRt-((ideal.min+ideal.max)/2))/2*100));
+    setTimeout(()=>{document.getElementById('r-rt-bar').style.width=rtBarPct+'%';},200);
+  } else {
+    document.getElementById('r-rt-val').textContent='—';
+    document.getElementById('r-rt-unit').textContent=t('rtSkipped');
+    document.getElementById('r-rt-bar').style.width='0%';
+  }
+
+  // Score
+  const scoreColor=finalScore>=80?'var(--green)':finalScore>=55?'var(--yellow)':finalScore>=38?'var(--orange)':'var(--red)';
+  document.getElementById('r-score').textContent=finalScore;
+  document.getElementById('r-score').style.color=scoreColor;
+  document.querySelector('.score-bar-f').style.setProperty('color',scoreColor);
+  document.documentElement.style.setProperty('--score-col',scoreColor);
+  setTimeout(()=>{
+    document.getElementById('r-score-bar').style.width=finalScore+'%';
+    document.getElementById('r-score-bar').style.background=scoreColor;
+  },150);
+
+  // Verdict
+  document.getElementById('r-verdict').textContent=isJa?nd.vJa:nd.v;
+  const rtNote=getRtNote(space,measuredRt);
+  document.getElementById('r-verdict-ja').textContent=rtNote||(isJa?nd.grade+'（'+T.ja.spaces[space]+'）':nd.grade+' · '+T.en.spaces[space]);
+
+  // Evidence
+  document.getElementById('r-evidence').textContent=isJa?nd.evJa:nd.ev;
+  document.getElementById('r-evidence-src').textContent='— '+nd.src;
+
+  // Tips
+  const tips=isJa?nd.tipsJa:nd.tips;
+  const tipsEl=document.getElementById('r-tips');
+  tipsEl.innerHTML='';
+  tips.forEach(tip=>{
+    const d=document.createElement('div');
+    d.className='tip-row';
+    d.innerHTML=`<div class="tip-dot"></div><div class="tip-text">${tip}</div>`;
+    tipsEl.appendChild(d);
+  });
+
+  // CTA / misc
+  document.getElementById('t-cta-desc').textContent=t('ctaDesc');
+  document.getElementById('t-cta-btn').textContent=t('ctaBtn');
+  document.getElementById('t-restart').textContent=t('restart');
+}
+
+// ════════════════════════════════════════
+// RESTART
+// ════════════════════════════════════════
+function restart(){
+  space=null;measuredDb=null;measuredRt=null;
+  dbSamples.length=0;
+  document.querySelectorAll('.space-card').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('s0next').disabled=true;
+  showRtState('rts-ready');
+  goTo(0);
+  for(let i=0;i<4;i++){
+    const si=document.getElementById('si'+i);
+    si.classList.remove('active','done');
+    if(i===0)si.classList.add('active');
+  }
+}
+
+// init
+buildBars();
+</script>
+</body>
+</html>
